@@ -88,6 +88,7 @@ devbar.apply_to_config(config, {
   },
 
   cache_ttl = 5,                -- Cache duration in seconds (git, runtimes)
+  ssh_cache_ttl = 60,           -- SSH config cache duration in seconds
 
   segments = {
     workspace = { enabled = true },
@@ -239,6 +240,81 @@ When connecting via `ssh server-prod`:
 - **Only shows in git repositories** (by design)
 - Check project markers exist (`package.json`, `composer.json`, etc.)
 - Check WezTerm Debug Overlay for warnings: `Cmd+Shift+L`
+
+### Tab directory not updating when you cd?
+
+**Root Cause**: WezTerm needs **shell integration** (OSC 7 escape sequences) to detect directory changes immediately. Without it, directory updates are delayed or fail.
+
+**Solution**: Add WezTerm shell integration to your shell configuration file:
+
+#### 🐚 Bash (~/.bashrc or ~/.bash_profile)
+
+```bash
+# WezTerm shell integration
+if [[ -n "$WEZTERM_PANE" ]]; then
+  # Download integration script (one-time)
+  WEZTERM_SHELL_INTEGRATION="$HOME/.config/wezterm/shell-integration.sh"
+  if [[ ! -f "$WEZTERM_SHELL_INTEGRATION" ]]; then
+    mkdir -p "$(dirname "$WEZTERM_SHELL_INTEGRATION")"
+    curl -fsSL https://raw.githubusercontent.com/wez/wezterm/main/assets/shell-integration/wezterm.sh \
+      -o "$WEZTERM_SHELL_INTEGRATION"
+  fi
+  source "$WEZTERM_SHELL_INTEGRATION"
+fi
+```
+
+#### 🦓 Zsh (~/.zshrc)
+
+```zsh
+# WezTerm shell integration
+if [[ -n "$WEZTERM_PANE" ]]; then
+  # Download integration script (one-time)
+  WEZTERM_SHELL_INTEGRATION="$HOME/.config/wezterm/shell-integration.sh"
+  if [[ ! -f "$WEZTERM_SHELL_INTEGRATION" ]]; then
+    mkdir -p "$(dirname "$WEZTERM_SHELL_INTEGRATION")"
+    curl -fsSL https://raw.githubusercontent.com/wez/wezterm/main/assets/shell-integration/wezterm.sh \
+      -o "$WEZTERM_SHELL_INTEGRATION"
+  fi
+  source "$WEZTERM_SHELL_INTEGRATION"
+fi
+```
+
+#### 🐠 Fish (~/.config/fish/config.fish)
+
+```fish
+# WezTerm shell integration
+if set -q WEZTERM_PANE
+  function __wezterm_osc7 --description "Inform WezTerm of current directory"
+    printf "\033]7;file://%s%s\033\\" (hostname) (pwd)
+  end
+  
+  # Emit OSC 7 before each prompt
+  function __wezterm_prompt --on-event fish_prompt
+    __wezterm_osc7
+  end
+end
+```
+
+**Verify Installation**:
+
+```bash
+# 1. Restart your shell or source the config
+source ~/.bashrc  # or ~/.zshrc
+
+# 2. Check if WEZTERM_PANE is set
+echo $WEZTERM_PANE  # Should print a pane ID like "1"
+
+# 3. Test directory change
+cd /tmp
+# Tab should update immediately to show "tmp"
+```
+
+**For SSH Sessions**: Install shell integration on the **remote server**, not just locally.
+
+**Platform-Specific Notes**:
+- **macOS**: Without shell integration, you may hit [WezTerm bug #4811](https://github.com/wez/wezterm/issues/4811) with stale CWD
+- **Linux**: Process fallback is more reliable but still slower than OSC 7
+- **Performance**: Shell integration adds <1ms overhead per prompt
 
 ### SSH tab shows `user@alias` instead of `user@ip`?
 

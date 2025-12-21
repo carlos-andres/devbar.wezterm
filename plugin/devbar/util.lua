@@ -109,7 +109,17 @@ end
 ---@return string
 function M.get_cwd(pane)
   local cwd = ''
-  local cwd_uri = pane:get_current_working_dir()
+  
+  -- Safe call to get_current_working_dir
+  local success, cwd_uri = pcall(function()
+    return pane:get_current_working_dir()
+  end)
+  
+  if not success then
+    local wezterm = require('wezterm')
+    wezterm.log_error('devbar.util: get_current_working_dir() failed:', cwd_uri)
+    return ''
+  end
 
   if not cwd_uri then
     return ''
@@ -210,7 +220,7 @@ function M.get_ssh_config(ssh_alias)
 
   if not result then
     local wezterm = require('wezterm')
-    wezterm.log_warn('devbar.util: failed to resolve SSH config for:', ssh_alias)
+    wezterm.log_warn('devbar.util: ssh -G failed for:', ssh_alias, '(using fallback user@alias format)')
     return nil
   end
 

@@ -33,7 +33,7 @@ function M.format_tab(tab, config, palette)
 
     if ssh_alias then
       local cache_key = 'ssh_config:' .. ssh_alias
-      local ssh_config = cache.get_or_fetch(cache_key, 300, function()
+      local ssh_config = cache.get_or_fetch(cache_key, config.ssh_cache_ttl or 60, function()
         return util.get_ssh_config(ssh_alias)
       end)
 
@@ -48,25 +48,7 @@ function M.format_tab(tab, config, palette)
       display_name = process_name ~= '' and process_name or 'ssh'
     end
   else
-    local cwd = ''
-    if tab.active_pane and tab.active_pane.current_working_dir then
-      local cwd_uri = tab.active_pane.current_working_dir
-      if type(cwd_uri) == 'userdata' then
-        cwd = cwd_uri.file_path or ''
-      elseif type(cwd_uri) == 'string' then
-        if cwd_uri:sub(1, 7) == 'file://' then
-          cwd_uri = cwd_uri:sub(8)
-        end
-        local slash = cwd_uri:find('/')
-        if slash then
-          cwd = cwd_uri:sub(slash)
-          cwd = cwd:gsub('%%(%x%x)', function(hex)
-            return string.char(tonumber(hex, 16))
-          end)
-        end
-      end
-    end
-
+    local cwd = tab.active_pane and util.get_cwd(tab.active_pane) or ''
     display_name = util.basename(cwd)
     if display_name == '' then
       display_name = '~'

@@ -12,6 +12,7 @@ M.defaults = {
     tab = 32,
   },
   cache_ttl = 5,
+  ssh_cache_ttl = 60,
   segments = {
     workspace = {
       enabled = true,
