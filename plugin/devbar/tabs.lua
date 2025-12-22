@@ -48,15 +48,21 @@ function M.format_tab(tab, config, palette)
       display_name = process_name ~= '' and process_name or 'ssh'
     end
   else
-    local cwd = tab.active_pane and util.get_cwd(tab.active_pane) or ''
-    display_name = util.basename(cwd)
-    if display_name == '' then
-      display_name = '~'
+    local cwd = ''
+    if tab.active_pane and tab.active_pane.current_working_dir then
+      -- Direct access to current_working_dir (it's a Url object in format-tab-title event)
+      local cwd_url = tab.active_pane.current_working_dir
+      -- Extract file_path from the Url object
+      if cwd_url.file_path then
+        cwd = cwd_url.file_path
+      elseif cwd_url.path then
+        cwd = cwd_url.path
+      end
     end
-  end
 
-  if config.truncate and config.truncate.cwd then
-    display_name = util.truncate(display_name, config.truncate.cwd)
+    -- Use smart dirname: shows parent/current or just current with ellipsis
+    local max_width = (config.truncate and config.truncate.cwd) or 24
+    display_name = util.get_smart_dirname(cwd, max_width)
   end
 
   local is_zoomed = false

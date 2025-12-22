@@ -73,14 +73,22 @@ if modules then
     end)
 
     if not success then
-      wezterm.log_error('devbar: format-tab-title failed:', result)
-      return tostring(tab.tab_index + 1)
+      wezterm.log_error('devbar: format-tab-title FAILED for tab ' .. (tab.tab_index + 1) .. ':', result)
+      -- Return fallback with proper formatting
+      return {
+        { Text = ' ' .. tostring(tab.tab_index + 1) .. ' ' }
+      }
     end
 
     return result
   end)
 
   wezterm.on('update-status', function(window, pane)
+    -- Validate pane exists and is valid
+    if not pane then
+      return
+    end
+
     local success, err = pcall(function()
       local config_opts = opts
       local colors = palette
@@ -170,9 +178,12 @@ if modules then
         })
       end
 
-      if config_opts.segments.ssh.enabled then
-        local domain_name = pane:get_domain_name()
-        if modules.util.is_ssh(domain_name) then
+      if config_opts.segments.ssh.enabled and pane then
+        local success_domain, domain_name = pcall(function()
+          return pane:get_domain_name()
+        end)
+
+        if success_domain and domain_name and modules.util.is_ssh(domain_name) then
           local hostname = modules.util.get_hostname(domain_name)
           if hostname then
             local ssh_icon = modules.icons.get('ssh', config_opts.use_ascii_icons)
